@@ -1,0 +1,43 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-django-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: sample-django
+  template:
+    metadata:
+      labels:
+        app: sample-django
+    spec:
+      containers:
+        - name: sample-django
+          image: howery/sample-django
+          command: ["sh", "-c", "python manage.py collectstatic --noinput && gunicorn --bind 0.0.0.0:8080 mysite.wsgi"]
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: sample-django-configmap
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: sample-django-secrets
+                  key: DATABASE_URL
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
